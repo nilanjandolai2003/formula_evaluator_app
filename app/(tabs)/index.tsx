@@ -1,98 +1,235 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+interface Row {
+  id: string;
+  description: string;
+  valueA: string;
+  valueB: string;
+  formula: string;
+  result: string;
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [rows, setRows] = useState<Row[]>([
+    {
+      id: '1',
+      description: 'Project Beta Cost',
+      valueA: '1500',
+      valueB: '12',
+      formula: 'A * B',
+      result: '18000',
+    },
+  ]);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  const evaluateFormula = (formula: string, valueA: number, valueB: number): string => {
+    if (!formula || isNaN(valueA) || isNaN(valueB)) return '';
+    try {
+      const A = valueA;
+      const B = valueB;
+      const result = eval(formula.toUpperCase().replace(/A/g, A).replace(/B/g, B));
+      return !isNaN(result) ? result.toString() : '';
+    } catch {
+      return '';
+    }
+  };
+
+  const updateRow = (id: string, field: keyof Row, value: string) => {
+    setRows((prevRows) =>
+      prevRows.map((row) => {
+        if (row.id === id) {
+          const updated = { ...row, [field]: value };
+          if (field === 'valueA' || field === 'valueB' || field === 'formula') {
+            const valueA = parseFloat(updated.valueA) || 0;
+            const valueB = parseFloat(updated.valueB) || 0;
+            updated.result = evaluateFormula(updated.formula, valueA, valueB);
+          }
+          return updated;
+        }
+        return row;
+      })
+    );
+  };
+
+  const addRow = () => {
+    const newRow: Row = {
+      id: Date.now().toString(),
+      description: '',
+      valueA: '',
+      valueB: '',
+      formula: '',
+      result: '',
+    };
+    setRows([...rows, newRow]);
+  };
+
+  const removeRow = (id: string) => {
+    if (rows.length > 1) {
+      setRows(rows.filter((row) => row.id !== id));
+    }
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText type="title">Dynamic Formula Evaluator</ThemedText>
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true}>
+        <View style={styles.tableHeader}>
+          <Text style={[styles.columnHeader, { flex: 1.5 }]}>Description</Text>
+          <Text style={[styles.columnHeader, { flex: 1 }]}>Value A</Text>
+          <Text style={[styles.columnHeader, { flex: 1 }]}>Value B</Text>
+          <Text style={[styles.columnHeader, { flex: 1.2 }]}>Formula</Text>
+          <Text style={[styles.columnHeader, { flex: 1 }]}>Result</Text>
+          <Text style={[styles.columnHeader, { flex: 0.6 }]}></Text>
+        </View>
+
+        {rows.map((row) => (
+          <View key={row.id} style={styles.tableRow}>
+            <TextInput
+              style={[styles.input, { flex: 1.5 }]}
+              placeholder="Description"
+              value={row.description}
+              onChangeText={(value) => updateRow(row.id, 'description', value)}
+              placeholderTextColor={isDark ? '#999' : '#ccc'}
+            />
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="0"
+              value={row.valueA}
+              onChangeText={(value) => updateRow(row.id, 'valueA', value)}
+              keyboardType="decimal-pad"
+              placeholderTextColor={isDark ? '#999' : '#ccc'}
+            />
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="0"
+              value={row.valueB}
+              onChangeText={(value) => updateRow(row.id, 'valueB', value)}
+              keyboardType="decimal-pad"
+              placeholderTextColor={isDark ? '#999' : '#ccc'}
+            />
+            <TextInput
+              style={[styles.input, { flex: 1.2 }]}
+              placeholder="A*B"
+              value={row.formula}
+              onChangeText={(value) => updateRow(row.id, 'formula', value)}
+              placeholderTextColor={isDark ? '#999' : '#ccc'}
+            />
+            <View style={[styles.resultCell, { flex: 1 }]}>
+              <ThemedText style={styles.resultText}>{row.result}</ThemedText>
+            </View>
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => removeRow(row.id)}
+              disabled={rows.length === 1}
+            >
+              <ThemedText style={styles.deleteBtnText}>✕</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
+
+      <TouchableOpacity style={styles.addButton} onPress={addRow}>
+        <ThemedText type="defaultSemiBold" style={styles.addButtonText}>
+          + Add Row
         </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </TouchableOpacity>
+    </ThemedView>
   );
 }
 
+// Workaround for Text component import
+const Text = ThemedText;
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    padding: 16,
   },
-  stepContainer: {
-    gap: 8,
+  header: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#ccc',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  columnHeader: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'center',
+    gap: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    fontSize: 12,
+    minHeight: 40,
+    backgroundColor: '#E8F5E9',
+    color: '#000',
+  },
+  resultCell: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 40,
+  },
+  resultText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2E7D32',
+    textAlign: 'center',
+  },
+  deleteBtn: {
+    width: 32,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FF5252',
+    borderRadius: 4,
+  },
+  deleteBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  addButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });
